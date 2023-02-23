@@ -1,30 +1,86 @@
-import { createSignal } from 'solid-js'
-import { render } from 'solid-js/web'
-import './style.css'
+import { For } from "solid-js";
+import { render } from "solid-js/web";
+import { createMachine, assign } from "xstate";
+import { useMachine } from "@xstate/solid";
+import "./style.css";
+
+type Item = { id: string; label: string };
+
+type Context = {
+  list: Item[];
+};
+
+type Events =
+  | { type: "ADD_ITEM"; item: Item }
+  | { type: "REMOVE_ITEM"; id: string };
+
+const listMachine = createMachine(
+  {
+    id: "listMachine",
+    schema: {
+      context: {} as Context,
+      events: {} as Events,
+    },
+    context: {
+      list: [
+        { id: "1", label: "Item 1" },
+        { id: "2", label: "Item 2" },
+        { id: "3", label: "Item 3" },
+        { id: "4", label: "Item 4" },
+        { id: "5", label: "Item 5" },
+        { id: "6", label: "Item 6" },
+      ],
+    },
+    initial: "idle",
+    states: {
+      idle: {
+        on: {
+          ADD_ITEM: {
+            actions: "addItem",
+          },
+          REMOVE_ITEM: {
+            actions: "removeItem",
+          },
+        },
+      },
+    },
+  },
+  {
+    actions: {
+      addItem: assign({
+        list: (context, event) => {
+          return context.list.concat(event.item);
+        },
+      }),
+      removeItem: assign({
+        list: (context, event) => {
+          console.log("foo");
+          return context.list.filter(
+            (currentItem) => currentItem.id !== event.id
+          );
+        },
+      }),
+    },
+  }
+);
 
 const App = () => {
-  const [counter, setCounter] = createSignal(0)
+  const [state, send] = useMachine(listMachine);
 
   return (
     <div>
-      <a href="https://vitejs.dev" target="_blank">
-        <img src="/vite.svg" class="logo" alt="Vite logo" />
-      </a>
-      <a href="https://www.solidjs.com/" target="_blank">
-        <img src="/solid.svg" class="logo" alt="Solid logo" />
-      </a>
-      <h1>Vite + Solid</h1>
-      <div class="card">
-        <button onClick={(e) => {
-          e.preventDefault();
-          setCounter(counter() + 1)
-        }}>count is {counter()}</button>
-      </div>
-      <p class="read-the-docs">
-        Click on the Vite and Solid logos to learn more
-      </p>
+      <For each={state.context.list}>
+        {(item) => (
+          <div>
+            {item.label}{" "}
+            <span onClick={() => send({ type: "REMOVE_ITEM", id: item.id })}>
+              [DELETE]
+            </span>
+          </div>
+        )}
+      </For>
     </div>
-  )
-}
+  );
+};
 
-render(() => <App />, document.getElementById('app') as HTMLElement)
+render(() => <App />, document.getElementById("app") as HTMLElement);
